@@ -5,7 +5,7 @@ on a fixed schedule, or only when data drift is detected?
 
 This project trains a TF-IDF + Logistic Regression classifier on weekly
 batches from [WildChat](https://huggingface.co/datasets/sh0416/wildchat-1m-tagged)
-and compares five (seven, counting sigma variants) retraining strategies.
+and compares five strategy families across 9 rule variants.
 
 ---
 
@@ -21,7 +21,7 @@ pip install -r requirements.txt
 
 ## Run
 
-### Full experiment (5 seeds × 7 rules)
+### Full experiment (5 seeds × 9 rule variants)
 
 ```bash
 # step 1: build pool.parquet from HF (one-time, ~10 min download)
