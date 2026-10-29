@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retraining Strategy Benchmark — WildChat</title>
+  
+  <!-- Inter & JetBrains Mono Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Local Standalone Plotly.js (Zero external CDN dependency!) -->
+  <script src="plotly.min.js"></script>
+
+  <!-- Pre-baked Dataset -->
+  <script src="data.js"></script>
+</head>
+<body>
+
+  <!-- APP HEADER -->
+  <header class="app-header">
+    <div class="app-container header-inner">
+      <div class="brand-group">
+        <div class="brand-icon">
+          <!-- Activity Icon SVG -->
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-weight: 700; font-size: 1rem; letter-spacing: -0.02em;">WildChat Retrain Lab</span>
+            <span class="sc-badge badge-indigo">v2.1</span>
+          </div>
+          <div style="font-size: 0.72rem; color: var(--text-muted);">Scheduled vs. Drift-Triggered Continual Retraining</div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span class="sc-badge badge-emerald">
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+          45 Test Weeks &middot; 5 Seeds
+        </span>
+        <button id="themeToggleBtn" class="sc-btn sc-btn-outline" title="Toggle Theme" style="padding: 0.4rem 0.6rem;">
+          <!-- Moon Icon SVG -->
+          <svg id="themeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN BODY -->
+  <main class="app-container" style="padding-top: 2rem; padding-bottom: 3rem; flex: 1;">
+
+    <!-- TOP KPI STAT CARDS -->
+    <div class="stat-grid">
+      
+      <!-- Card 1: Pareto Winner -->
+      <div class="sc-card stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Pareto Winner</span>
+          <span class="sc-badge badge-emerald">Optimal ROI</span>
+        </div>
+        <div class="stat-title">every_4_weeks</div>
+        <div class="stat-metric">
+          <span class="font-mono" style="font-weight: 700; color: #34d399; font-size: 1.15rem;">0.4764 ± 0.003</span>
+          <span>Macro F1</span>
+        </div>
+        <div class="stat-desc">
+          Recovers <strong>82.3%</strong> of continuous weekly retraining gains with <strong>75.6% fewer retrains</strong> (11 vs 45).
+        </div>
+      </div>
+
+      <!-- Card 2: Max Ceiling -->
+      <div class="sc-card stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Performance Ceiling</span>
+          <span class="sc-badge badge-indigo">Scheduled</span>
+        </div>
+        <div class="stat-title">every_week</div>
+        <div class="stat-metric">
+          <span class="font-mono" style="font-weight: 700; color: #818cf8; font-size: 1.15rem;">0.4834 ± 0.003</span>
+          <span>Macro F1</span>
+        </div>
+        <div class="stat-desc">
+          Highest score ceiling and lowest degraded weeks (&lt;0.42: <strong>1.0</strong>), at highest compute cost (204.4s).
+        </div>
+      </div>
+
+      <!-- Card 3: Best Drift -->
+      <div class="sc-card stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Best Label-Free</span>
+          <span class="sc-badge badge-cyan">Zero Labels</span>
+        </div>
+        <div class="stat-title">drift_2σ</div>
+        <div class="stat-metric">
+          <span class="font-mono" style="font-weight: 700; color: #38bdf8; font-size: 1.15rem;">0.4725 ± 0.003</span>
+          <span>Macro F1</span>
+        </div>
+        <div class="stat-desc">
+          Outperforms all reactive score triggers using only vocabulary OOV rate and predicted-class JS divergence.
+        </div>
+      </div>
+
+      <!-- Card 4: Baseline -->
+      <div class="sc-card stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Baseline Decay</span>
+          <span class="sc-badge badge-rose">No Retrain</span>
+        </div>
+        <div class="stat-title">never</div>
+        <div class="stat-metric">
+          <span class="font-mono" style="font-weight: 700; color: #fb7185; font-size: 1.15rem;">0.4441 ± 0.003</span>
+          <span>Macro F1</span>
+        </div>
+        <div class="stat-desc">
+          Without retraining, suffers <strong>6.2 degraded weeks</strong> (&lt;0.42) as real-world prompt styles drift.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TABS BAR -->
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+      <div class="sc-tabs-bar">
+        <button id="tabBtn-overview" class="sc-tab-btn active" onclick="setTab('overview')">Overview &amp; Trade-off</button>
+        <button id="tabBtn-trajectories" class="sc-tab-btn" onclick="setTab('trajectories')">F1 Trajectories</button>
+        <button id="tabBtn-drift" class="sc-tab-btn" onclick="setTab('drift')">Drift Signals</button>
+        <button id="tabBtn-matrix" class="sc-tab-btn" onclick="setTab('matrix')">Strategy Inspector</button>
+        <button id="tabBtn-data" class="sc-tab-btn" onclick="setTab('data')">Data Explorer</button>
+      </div>
+
+      <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+        <span>Dataset: <code class="font-mono" style="color: var(--text-secondary);">sh0416/wildchat-1m-tagged</code></span>
+      </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- TAB 1: OVERVIEW & TRADEOFF                                           -->
+    <!-- ==================================================================== -->
+    <div id="pane-overview" class="tab-pane active">
+      
+      <!-- Chart Card -->
+      <div class="sc-card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <h2 style="font-size: 1.1rem; margin-bottom: 0.25rem;">Performance vs. Retraining Cost Trade-off</h2>
+            <p style="font-size: 0.78rem; color: var(--text-secondary);">
+              Average Macro F1 (y) vs. Average Retrains (x). Vertical error bars indicate ±1 standard deviation across 5 random seeds.
+            </p>
+          </div>
+          <span class="sc-badge badge-emerald font-mono">Pareto Frontier: every_4_weeks (11 retrains, 0.4764 F1)</span>
+        </div>
+
+        <div id="tradeoffPlot" class="chart-box" style="height: 460px;"></div>
+
+        <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted); flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <span><span style="color: #818cf8;">●</span> Scheduled</span>
+            <span><span style="color: #34d399;">■</span> Drift-Triggered (No labels)</span>
+            <span><span style="color: #fb7185;">▲</span> Score-Triggered (Needs labels)</span>
+            <span><span style="color: #a1a1aa;">✕</span> Baseline</span>
+          </div>
+          <span>Tip: Click and drag to zoom; double-click to reset.</span>
+        </div>
+      </div>
+
+      <!-- Summary Table Card -->
+      <div class="sc-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <h2 style="font-size: 1.1rem; margin-bottom: 0.25rem;">Benchmark Summary Table</h2>
+            <p style="font-size: 0.78rem; color: var(--text-secondary);">
+              Aggregated over 45 test weeks (Weeks 13–57) across 5 seeds. Click column headers to sort.
+            </p>
+          </div>
+          <button class="sc-btn sc-btn-outline" onclick="exportSummaryCSV()">
+            <!-- Download Icon -->
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export summary.csv
+          </button>
+        </div>
+
+        <div class="sc-table-wrapper">
+          <table class="sc-table" id="summaryTable">
+            <thead>
+              <tr>
+                <th class="sortable" onclick="sortSummary('rule')">Strategy ⇅</th>
+                <th class="sortable" onclick="sortSummary('needs_labels')">Labels Needed? ⇅</th>
+                <th class="sortable" onclick="sortSummary('f1')">Avg Macro F1 ⇅</th>
+                <th class="sortable" onclick="sortSummary('weeks_below')">Weeks &lt; 0.42 F1 ⇅</th>
+                <th class="sortable" onclick="sortSummary('retrains')">Avg Retrains ⇅</th>
+                <th class="sortable" onclick="sortSummary('time')">Avg Train Time ⇅</th>
+                <th style="text-align: right;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTableBody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- TAB 2: TRAJECTORIES (F1 TIMELINE)                                    -->
+    <!-- ==================================================================== -->
+    <div id="pane-trajectories" class="tab-pane" style="display: none;">
+      
+      <!-- Control Bar -->
+      <div class="sc-card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+          <h3 style="font-size: 0.9rem;">Select Strategies to Display:</h3>
+          <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+            <button class="sc-btn sc-btn-outline" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="setPreset('all')">All (9)</button>
+            <button class="sc-btn sc-btn-outline" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; border-color: rgba(99,102,241,0.4); color: #818cf8;" onclick="setPreset('key')">Key 4 (Recommended)</button>
+            <button class="sc-btn sc-btn-outline" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="setPreset('drift')">Drift Family</button>
+            <button class="sc-btn sc-btn-outline" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="setPreset('score')">Score Family</button>
+          </div>
+        </div>
+
+        <div id="ruleToggleBar" style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem;">
+          <!-- Toggles rendered via JS -->
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 0.75rem; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem;">
+            <span style="color: var(--text-secondary);">View Mode:</span>
+            <select id="seedSelect" class="sc-select" onchange="renderTrajectoryPlot()">
+              <option value="mean">Mean across 5 seeds</option>
+              <option value="42">Seed 42</option>
+              <option value="123">Seed 123</option>
+              <option value="256">Seed 256</option>
+              <option value="512">Seed 512</option>
+              <option value="1024">Seed 1024</option>
+            </select>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">
+            <span style="color: #ef4444; font-weight: bold;">---</span> Red dashed line = Low F1 alert threshold (0.42) &middot; Diamonds (◆) = Retraining events
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Trajectory Plot -->
+      <div class="sc-card">
+        <h2 style="font-size: 1.1rem; margin-bottom: 0.25rem;">Weekly Macro F1 Trajectory (Weeks 13–57)</h2>
+        <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 1rem;">
+          Evaluated over 45 test weeks. Diamond markers denote exact weeks where a strategy triggered model retraining.
+        </p>
+        <div id="trajectoryPlot" class="chart-box" style="height: 480px;"></div>
+      </div>
+
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- TAB 3: DRIFT SIGNALS                                                 -->
+    <!-- ==================================================================== -->
+    <div id="pane-drift" class="tab-pane" style="display: none;">
+      
+      <div class="sc-card" style="margin-bottom: 1.5rem; background: rgba(6, 182, 212, 0.05); border-color: rgba(6, 182, 212, 0.2);">
+        <h3 style="font-size: 0.95rem; color: #38bdf8; margin-bottom: 0.25rem;">Unsupervised Dual-Signal Drift Detector</h3>
+        <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
+          Monitors feature expansion and concept drift <strong>without ground truth labels</strong>. Calibration thresholds (<code class="font-mono">mean + kσ</code>) are derived from the first 6 test weeks. If either signal crosses its threshold, a retrain is triggered (governed by a 2-week cooldown).
+        </p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 1.5rem;">
+        
+        <!-- OOV Chart -->
+        <div class="sc-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+            <h3 style="font-size: 1rem;">1. Out-of-Vocabulary (OOV) Share</h3>
+            <span class="sc-badge badge-cyan font-mono">Vocab Shift</span>
+          </div>
+          <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+            Share of prompt tokens absent from the initial 12-week training TF-IDF vocabulary.
+          </p>
+          <div id="oovPlot" class="chart-box" style="height: 340px;"></div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.5rem; display: flex; justify-content: space-between;">
+            <span>Calib Mean: <strong class="font-mono" style="color: var(--text-primary);" id="lblOovMean">-</strong></span>
+            <span>2σ: <strong class="font-mono" style="color:#06b6d4;" id="lblOov2s">-</strong> | 3σ: <strong class="font-mono" style="color:#6366f1;" id="lblOov3s">-</strong> | 4σ: <strong class="font-mono" style="color:#f43f5e;" id="lblOov4s">-</strong></span>
+          </div>
+        </div>
+
+        <!-- JS Chart -->
+        <div class="sc-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+            <h3 style="font-size: 1rem;">2. Jensen-Shannon Distance</h3>
+            <span class="sc-badge badge-emerald font-mono">Concept Shift</span>
+          </div>
+          <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+            JS divergence between current week's predicted-class distribution and the baseline training mix.
+          </p>
+          <div id="jsPlot" class="chart-box" style="height: 340px;"></div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.5rem; display: flex; justify-content: space-between;">
+            <span>Calib Mean: <strong class="font-mono" style="color: var(--text-primary);" id="lblJsMean">-</strong></span>
+            <span>2σ: <strong class="font-mono" style="color:#06b6d4;" id="lblJs2s">-</strong> | 3σ: <strong class="font-mono" style="color:#6366f1;" id="lblJs3s">-</strong> | 4σ: <strong class="font-mono" style="color:#f43f5e;" id="lblJs4s">-</strong></span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- TAB 4: STRATEGY MATRIX                                               -->
+    <!-- ==================================================================== -->
+    <div id="pane-matrix" class="tab-pane" style="display: none;">
+      <div class="sc-card">
+        <h2 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Strategy Architecture &amp; Empirical Findings</h2>
+        <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.5;">
+          A structural comparison of why specific continual learning mechanisms succeed or fail under real-world prompt distribution drift.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+          
+          <div style="padding: 1.25rem; border-radius: var(--radius-md); background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #6366f1;"></span>
+              <h3 style="font-size: 0.95rem; color: #818cf8;">Scheduled Retraining</h3>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem;">
+              Retrains model periodically on a fixed calendar schedule using the most recent 12-week sliding window.
+            </p>
+            <ul style="font-size: 0.75rem; color: var(--text-secondary); padding-left: 1.2rem; line-height: 1.6;">
+              <li><strong style="color: var(--text-primary);">every_week:</strong> Establishes the upper performance bound (0.4834 F1) but consumes 45 retraining runs (204.4s).</li>
+              <li><strong style="color: #34d399;">every_4_weeks (Pareto Winner):</strong> Recovers 82.3% of the weekly retraining lift (0.4764 F1) with 75.6% fewer retrains (11 vs 45) and identical low decay weeks (1.2 vs 1.0).</li>
+            </ul>
+          </div>
+
+          <div style="padding: 1.25rem; border-radius: var(--radius-md); background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+              <h3 style="font-size: 0.95rem; color: #34d399;">Drift-Triggered (No Labels)</h3>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem;">
+              Monitors input vocabulary shift and predicted label distribution in real time without ground-truth labels.
+            </p>
+            <ul style="font-size: 0.75rem; color: var(--text-secondary); padding-left: 1.2rem; line-height: 1.6;">
+              <li><strong style="color: #38bdf8;">drift_2σ:</strong> Triggers 11.2 retrains, achieving 0.4725 F1 and only 1.2 degraded weeks.</li>
+              <li><strong style="color: var(--text-primary);">drift_3σ:</strong> Triggers 9.2 retrains (0.4704 F1), offering balanced sensitivity.</li>
+              <li><strong style="color: var(--text-primary);">Advantage:</strong> Preempts accuracy drops before users experience them, without requiring delayed manual annotation.</li>
+            </ul>
+          </div>
+
+          <div style="padding: 1.25rem; border-radius: var(--radius-md); background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.2);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #f43f5e;"></span>
+              <h3 style="font-size: 0.95rem; color: #fb7185;">Score-Triggered (Needs Labels)</h3>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem;">
+              Fires when rolling 2-week macro F1 drops below reference threshold. Inherently reactive.
+            </p>
+            <ul style="font-size: 0.75rem; color: var(--text-secondary); padding-left: 1.2rem; line-height: 1.6;">
+              <li><strong style="color: var(--text-primary);">score_0.02:</strong> 3.8 retrains, 0.4639 F1, 2.0 degraded weeks.</li>
+              <li><strong style="color: var(--text-primary);">score_0.03:</strong> 2.6 retrains, 0.4597 F1, 2.8 degraded weeks.</li>
+              <li><strong style="color: #fb7185;">score_0.05:</strong> 1.2 retrains, 0.4541 F1, 4.0 degraded weeks.</li>
+              <li><strong style="color: var(--text-primary);">Limitation:</strong> Reactive lag forces users to experience a degradation period before the system responds.</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- TAB 5: DATA EXPLORER                                                 -->
+    <!-- ==================================================================== -->
+    <div id="pane-data" class="tab-pane" style="display: none;">
+      <div class="sc-card">
+        
+        <!-- Filter Controls -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <input type="text" id="rawSearch" class="sc-input" placeholder="Search week (e.g. 2023-W35)..." style="width: 220px;" oninput="filterDataRows()">
+            
+            <select id="rawRuleSelect" class="sc-select" onchange="filterDataRows()">
+              <option value="ALL">All Strategies</option>
+            </select>
+
+            <select id="rawSeedSelect" class="sc-select" onchange="filterDataRows()">
+              <option value="ALL">All Seeds</option>
+              <option value="42">Seed 42</option>
+              <option value="123">Seed 123</option>
+              <option value="256">Seed 256</option>
+              <option value="512">Seed 512</option>
+              <option value="1024">Seed 1024</option>
+            </select>
+
+            <label style="font-size: 0.78rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+              <input type="checkbox" id="rawRetrainOnly" onchange="filterDataRows()">
+              Only retrained weeks
+            </label>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span id="dataRowCountLabel" style="font-size: 0.75rem; color: var(--text-muted);">0 rows</span>
+            <button class="sc-btn sc-btn-outline" onclick="exportFilteredCSV()">
+              Export Filtered CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="sc-table-wrapper">
+          <table class="sc-table">
+            <thead>
+              <tr>
+                <th>Week ID</th>
+                <th>Strategy</th>
+                <th>Seed</th>
+                <th>Macro F1</th>
+                <th>Accuracy</th>
+                <th>OOV Share</th>
+                <th>JS Dist</th>
+                <th>Retrained?</th>
+                <th style="text-align: right;">Train Time</th>
+              </tr>
+            </thead>
+            <tbody id="rawTableBody" class="font-mono">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">
+          <div>
+            Page <span id="curPageNum">1</span> of <span id="totalPageNum">1</span>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="btnPrevPage" class="sc-btn sc-btn-outline" onclick="changePage(-1)">Previous</button>
+            <button id="btnNextPage" class="sc-btn sc-btn-outline" onclick="changePage(1)">Next</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer style="border-top: 1px solid var(--border-subtle); padding: 1.5rem 0; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+    <div class="app-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+      <span>WildChat Prompt-Type Retraining Benchmark &middot; MLflow Database: <code class="font-mono" style="color: var(--text-secondary);">mlruns.db</code></span>
+      <span>Interactive Retraining Benchmark Dashboard &middot; Offline Plotly.js</span>
+    </div>
+  </footer>
+
+  <!-- ==================================================================== -->
+  <!-- JAVASCRIPT APPLICATION LOGIC                                         -->
+  <!-- ==================================================================== -->
+  <script>
+    // State
+    const DATA = window.DASHBOARD_DATA;
+    let currentTab = 'overview';
+    let selectedRules = new Set(["every_4_weeks", "drift_2σ", "score_0.02", "never"]);
+    let summarySortCol = 'f1';
+    let summarySortAsc = false;
+    
+    let rawPage = 1;
+    const PAGE_SIZE = 25;
+    let filteredRecords = [];
+
+    // Colors Map
+    const RULE_COLORS = {
+      "every_week": "#6366f1",    // Indigo
+      "every_4_weeks": "#10b981", // Emerald
+      "drift_2σ": "#06b6d4",      // Cyan
+      "drift_3σ": "#0ea5e9",      // Sky
+      "drift_4σ": "#38bdf8",      // Light Sky
+      "score_0.02": "#f59e0b",    // Amber
+      "score_0.03": "#f97316",    // Orange
+      "score_0.05": "#ef4444",    // Rose
+      "never": "#71717a"          // Zinc/Gray
+    };
+
+    // Plotly Base Layout Theme Helper
+    function getPlotlyLayout(titleText, xTitle, yTitle) {
+      const isLight = document.documentElement.classList.contains('light');
+      const textPrimary = isLight ? '#0f172a' : '#fafafa';
+      const textSecondary = isLight ? '#64748b' : '#a1a1aa';
+      const gridColor = isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.06)';
+
+      return {
+        autosize: true,
+        margin: { l: 55, r: 35, t: 30, b: 50 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Inter, sans-serif', color: textSecondary, size: 11 },
+        title: titleText ? { text: titleText, font: { color: textPrimary, size: 14 } } : undefined,
+        xaxis: {
+          title: xTitle ? { text: xTitle, font: { size: 12, color: textSecondary } } : undefined,
+          gridcolor: gridColor,
+          zerolinecolor: gridColor,
+          tickfont: { family: 'JetBrains Mono, monospace', size: 10, color: textSecondary }
+        },
+        yaxis: {
+          title: yTitle ? { text: yTitle, font: { size: 12, color: textSecondary } } : undefined,
+          gridcolor: gridColor,
+          zerolinecolor: gridColor,
+          tickfont: { family: 'JetBrains Mono, monospace', size: 10, color: textSecondary }
+        },
+        hoverlabel: {
+          bgcolor: isLight ? '#ffffff' : '#18181b',
+          bordercolor: isLight ? '#e2e8f0' : '#27272a',
+          font: { family: 'Inter, sans-serif', color: textPrimary, size: 12 }
+        }
+      };
+    }
+
+    // 1. TRADEOFF PLOT (Pareto Frontier)
+    function renderTradeoffPlot() {
+      const pts = DATA.tradeoff;
+      const isLight = document.documentElement.classList.contains('light');
+
+      // Group by category
+      const categories = [
+        { name: "Scheduled", marker: "circle", color: "#818cf8" },
+        { name: "Drift-Triggered", marker: "square", color: "#34d399" },
+        { name: "Score-Triggered", marker: "triangle-up", color: "#fb7185" },
+        { name: "Baseline", marker: "x", color: "#a1a1aa" }
+      ];
+
+      const traces = [];
+
+      // Pareto dashed line
+      const paretoOrder = ["never", "drift_4σ", "drift_3σ", "drift_2σ", "every_4_weeks", "every_week"];
+      const paretoPts = paretoOrder.map(r => pts.find(x => x.rule === r));
+      traces.push({
+        x: paretoPts.map(p => p.retrains_mean),
+        y: paretoPts.map(p => p.f1_mean),
+        mode: 'lines',
+        name: 'Pareto Frontier',
+        line: { color: '#10b981', dash: 'dash', width: 2 },
+        hoverinfo: 'skip'
+      });
+
+      // Scatter markers for each category
+      categories.forEach(cat => {
+        const catPts = pts.filter(p => p.category === cat.name);
+        if (catPts.length === 0) return;
+
+        traces.push({
+          x: catPts.map(p => p.retrains_mean),
+          y: catPts.map(p => p.f1_mean),
+          mode: 'markers',
+          name: cat.name,
+          error_y: {
+            type: 'data',
+            array: catPts.map(p => p.f1_std),
+            visible: true,
+            color: cat.color,
+            thickness: 1.5,
+            width: 4
+          },
+          marker: {
+            symbol: cat.marker,
+            size: 11,
+            color: cat.color,
+            line: { color: '#ffffff', width: 1.5 }
+          },
+          hovertemplate: catPts.map(p => 
+            `<b>${p.rule}</b> (${p.category})<br>` +
+            `Avg Macro F1: <b>${p.f1_mean.toFixed(4)} ± ${p.f1_std.toFixed(4)}</b><br>` +
+            `Avg Retrains: <b>${p.retrains_mean.toFixed(1)} ± ${p.retrains_std.toFixed(1)}</b><br>` +
+            `Weeks < 0.42: <b>${p.weeks_below_042.toFixed(1)}</b><br>` +
+            `Total Train Time: <b>${p.train_time_s.toFixed(1)}s</b><br>` +
+            `Needs Labels: <b>${p.needs_labels ? 'Yes' : 'No'}</b><extra></extra>`
+          )
+        });
+      });
+
+      const layout = getPlotlyLayout('', 'Average Retrains (across 45 test weeks)', 'Average Macro F1');
+      layout.legend = { orientation: 'h', x: 0, y: 1.12, font: { size: 11 } };
+      layout.xaxis.range = [-3, 50];
+      layout.yaxis.range = [0.435, 0.495];
+
+      // Curated, non-overlapping annotations with tailored pixel offsets
+      const ANNOTATION_OFFSETS = {
+        "never":         { ax: 42,  ay: 12,  text: "never" },
+        "score_0.05":    { ax: 52,  ay: 18,  text: "score_0.05" },
+        "score_0.03":    { ax: 52,  ay: -18, text: "score_0.03" },
+        "score_0.02":    { ax: 52,  ay: 20,  text: "score_0.02" },
+        "drift_4σ":      { ax: -48, ay: -20, text: "drift_4σ" },
+        "drift_3σ":      { ax: -48, ay: 18,  text: "drift_3σ" },
+        "drift_2σ":      { ax: 52,  ay: 20,  text: "drift_2σ" },
+        "every_4_weeks": { ax: -55, ay: -24, text: "★ every_4_weeks" },
+        "every_week":    { ax: -55, ay: -18, text: "every_week" }
+      };
+
+      layout.annotations = pts.map(p => {
+        const off = ANNOTATION_OFFSETS[p.rule] || { ax: 30, ay: -20, text: p.rule };
+        return {
+          x: p.retrains_mean,
+          y: p.f1_mean,
+          xref: 'x',
+          yref: 'y',
+          text: `<b>${off.text}</b>`,
+          showarrow: true,
+          arrowhead: 0,
+          arrowwidth: 1,
+          arrowcolor: isLight ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.25)',
+          ax: off.ax,
+          ay: off.ay,
+          font: {
+            family: 'JetBrains Mono, monospace',
+            size: 11,
+            color: isLight ? '#0f172a' : '#fafafa'
+          },
+          bgcolor: isLight ? 'rgba(255, 255, 255, 0.92)' : 'rgba(24, 24, 27, 0.92)',
+          bordercolor: p.color,
+          borderwidth: p.rule === 'every_4_weeks' ? 2 : 1,
+          borderpad: 4
+        };
+      });
+
+      Plotly.react('tradeoffPlot', traces, layout, { responsive: true, displayModeBar: false });
+    }
+
+    // 2. TRAJECTORY PLOT
+    function renderTrajectoryPlot() {
+      const seedMode = document.getElementById('seedSelect').value;
+      const weeks = DATA.weeks;
+      const traces = [];
+
+      selectedRules.forEach(rule => {
+        const color = RULE_COLORS[rule] || "#71717a";
+        let f1Vals = [];
+        let retrainWeeks = [];
+
+        if (seedMode === 'mean') {
+          const w = DATA.weekly[rule];
+          f1Vals = w.f1_mean;
+          retrainWeeks = w.retrain_weeks;
+        } else {
+          const s = DATA.per_seed[seedMode][rule];
+          f1Vals = s.f1;
+          retrainWeeks = weeks.filter((wk, i) => s.retrained[i]);
+        }
+
+        // Main line trace
+        traces.push({
+          x: weeks,
+          y: f1Vals,
+          mode: 'lines',
+          name: rule,
+          line: {
+            color: color,
+            width: (rule === 'every_4_weeks' || rule === 'drift_2σ') ? 2.5 : 1.6
+          },
+          hovertemplate: `<b>${rule}</b>: %{y:.4f}<extra></extra>`
+        });
+
+        // Retraining event diamond glyphs
+        const retrainX = [];
+        const retrainY = [];
+        weeks.forEach((wk, i) => {
+          if (retrainWeeks.includes(wk)) {
+            retrainX.push(wk);
+            retrainY.push(f1Vals[i]);
+          }
+        });
+
+        if (retrainX.length > 0) {
+          traces.push({
+            x: retrainX,
+            y: retrainY,
+            mode: 'markers',
+            name: `${rule} (Retrain)`,
+            marker: {
+              symbol: 'diamond',
+              size: 8,
+              color: color,
+              line: { color: '#ffffff', width: 1.5 }
+            },
+            showlegend: false,
+            hovertemplate: `<b>${rule} Retrained</b><br>Week: %{x}<br>Score: %{y:.4f}<extra></extra>`
+          });
+        }
+      });
+
+      // 0.42 threshold reference line
+      traces.push({
+        x: [weeks[0], weeks[weeks.length - 1]],
+        y: [0.42, 0.42],
+        mode: 'lines',
+        name: 'Alert Level (0.42)',
+        line: { color: 'rgba(239, 68, 68, 0.8)', dash: 'dot', width: 1.5 },
+        hoverinfo: 'skip'
+      });
+
+      const layout = getPlotlyLayout('', 'Test Weeks (Timeline)', 'Macro F1');
+      layout.legend = { orientation: 'h', x: 0, y: 1.14, font: { size: 10.5 } };
+      layout.yaxis.range = [0.35, 0.52];
+
+      Plotly.react('trajectoryPlot', traces, layout, { responsive: true, displayModeBar: false });
+    }
+
+    // 3. DRIFT PLOTS
+    function renderDriftPlots() {
+      const d = DATA.drift;
+      const weeks = d.weeks;
+
+      // Update text indicators
+      document.getElementById('lblOovMean').textContent = d.thresholds.cal_mean.oov.toFixed(4);
+      document.getElementById('lblOov2s').textContent = d.thresholds['2sigma'].oov.toFixed(4);
+      document.getElementById('lblOov3s').textContent = d.thresholds['3sigma'].oov.toFixed(4);
+      document.getElementById('lblOov4s').textContent = d.thresholds['4sigma'].oov.toFixed(4);
+
+      document.getElementById('lblJsMean').textContent = d.thresholds.cal_mean.js.toFixed(4);
+      document.getElementById('lblJs2s').textContent = d.thresholds['2sigma'].js.toFixed(4);
+      document.getElementById('lblJs3s').textContent = d.thresholds['3sigma'].js.toFixed(4);
+      document.getElementById('lblJs4s').textContent = d.thresholds['4sigma'].js.toFixed(4);
+
+      // OOV Plot
+      const oovTraces = [
+        {
+          x: weeks,
+          y: d.oov_mean,
+          mode: 'lines',
+          name: 'OOV Share',
+          line: { color: '#06b6d4', width: 2 },
+          fill: 'tozeroy',
+          fillcolor: 'rgba(6, 182, 212, 0.08)'
+        },
+        {
+          x: [weeks[0], weeks[weeks.length - 1]],
+          y: [d.thresholds['2sigma'].oov, d.thresholds['2sigma'].oov],
+          mode: 'lines',
+          name: '+2σ Threshold',
+          line: { color: '#06b6d4', dash: 'dash', width: 1.5 }
+        },
+        {
+          x: [weeks[0], weeks[weeks.length - 1]],
+          y: [d.thresholds['3sigma'].oov, d.thresholds['3sigma'].oov],
+          mode: 'lines',
+          name: '+3σ Threshold',
+          line: { color: '#6366f1', dash: 'dash', width: 1.5 }
+        },
+        {
+          x: [weeks[0], weeks[weeks.length - 1]],
+          y: [d.thresholds['4sigma'].oov, d.thresholds['4sigma'].oov],
+          mode: 'lines',
+          name: '+4σ Threshold',
+          line: { color: '#f43f5e', dash: 'dash', width: 1.5 }
+        }
+      ];
+
+      const oovLayout = getPlotlyLayout('', 'Week', 'Out-of-Vocabulary Ratio');
+      oovLayout.legend = { orientation: 'h', x: 0, y: 1.15, font: { size: 9.5 } };
+      Plotly.react('oovPlot', oovTraces, oovLayout, { responsive: true, displayModeBar: false });
+
+      // JS Distance Plot
+      const jsTraces = [
+        {
+          x: weeks,
+          y: d.js_mean,
+          mode: 'lines',
+          name: 'JS Distance',
+          line: { color: '#10b981', width: 2 },
+          fill: 'tozeroy',
+          fillcolor: 'rgba(16, 185, 129, 0.08)'
+        },
+        {
+          x: [weeks[0], weeks[weeks.length - 1]],
+          y: [d.thresholds['2sigma'].js, d.thresholds['2sigma'].js],
+          mode: 'lines',
+          name: '+2σ Threshold',
+          line: { color: '#06b6d4', dash: 'dash', width: 1.5 }
+        },
+        {
+          x: [weeks[0], weeks[weeks.length - 1]],
+          y: [d.thresholds['3sigma'].js, d.thresholds['3sigma'].js],
+          mode: 'lines',
+          name: '+3σ Threshold',
+          line: { color: '#6366f1', dash: 'dash', width: 1.5 }
+        },
+        {
+          x: [weeks[0], weeks[weeks.length - 1]],
+          y: [d.thresholds['4sigma'].js, d.thresholds['4sigma'].js],
+          mode: 'lines',
+          name: '+4σ Threshold',
+          line: { color: '#f43f5e', dash: 'dash', width: 1.5 }
+        }
+      ];
+
+      const jsLayout = getPlotlyLayout('', 'Week', 'Jensen-Shannon Distance');
+      jsLayout.legend = { orientation: 'h', x: 0, y: 1.15, font: { size: 9.5 } };
+      Plotly.react('jsPlot', jsTraces, jsLayout, { responsive: true, displayModeBar: false });
+    }
+
+    // 4. SUMMARY TABLE
+    function renderSummaryTable() {
+      const tbody = document.getElementById('summaryTableBody');
+      tbody.innerHTML = '';
+
+      let list = [...DATA.summary];
+      
+      // Sort logic
+      list.sort((a, b) => {
+        let valA, valB;
+        if (summarySortCol === 'rule') {
+          valA = a.rule; valB = b.rule;
+        } else if (summarySortCol === 'needs_labels') {
+          valA = a.needs_labels ? 1 : 0; valB = b.needs_labels ? 1 : 0;
+        } else if (summarySortCol === 'f1') {
+          valA = parseFloat(a.avg_macro_f1.split('±')[0]);
+          valB = parseFloat(b.avg_macro_f1.split('±')[0]);
+        } else if (summarySortCol === 'weeks_below') {
+          valA = parseFloat(a["weeks_below_0.42_f1"].split('±')[0]);
+          valB = parseFloat(b["weeks_below_0.42_f1"].split('±')[0]);
+        } else if (summarySortCol === 'retrains') {
+          valA = parseFloat(a.avg_retrains.split('±')[0]);
+          valB = parseFloat(b.avg_retrains.split('±')[0]);
+        } else if (summarySortCol === 'time') {
+          valA = parseFloat(a.avg_train_time_s.split('±')[0]);
+          valB = parseFloat(b.avg_train_time_s.split('±')[0]);
+        }
+        if (valA < valB) return summarySortAsc ? -1 : 1;
+        if (valA > valB) return summarySortAsc ? 1 : -1;
+        return 0;
+      });
+
+      list.forEach(row => {
+        const tr = document.createElement('tr');
+        const color = RULE_COLORS[row.rule] || '#71717a';
+        
+        const labelsBadge = row.needs_labels
+          ? `<span class="sc-badge badge-amber">Yes (Supervised)</span>`
+          : `<span class="sc-badge badge-emerald">No (Label-Free)</span>`;
+
+        let statusBadge = `<span style="color: var(--text-muted);">Standard</span>`;
+        if (row.rule === 'every_4_weeks') {
+          statusBadge = `<span class="sc-badge badge-emerald">★ Pareto Champion</span>`;
+        } else if (row.rule === 'every_week') {
+          statusBadge = `<span class="sc-badge badge-indigo">Max Score</span>`;
+        } else if (row.rule === 'drift_2σ') {
+          statusBadge = `<span class="sc-badge badge-cyan">Best Unsupervised</span>`;
+        } else if (row.rule === 'never') {
+          statusBadge = `<span class="sc-badge badge-rose">Severe Decay</span>`;
+        }
+
+        tr.innerHTML = `
+          <td style="font-weight: 600;">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${color}; margin-right: 6px;"></span>
+            <span class="font-mono" style="color: var(--text-primary);">${row.rule}</span>
+          </td>
+          <td>${labelsBadge}</td>
+          <td class="font-mono" style="font-weight: 700; color: var(--text-primary);">${row.avg_macro_f1}</td>
+          <td class="font-mono">${row["weeks_below_0.42_f1"]}</td>
+          <td class="font-mono">${row.avg_retrains}</td>
+          <td class="font-mono">${row.avg_train_time_s}s</td>
+          <td style="text-align: right;">${statusBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function sortSummary(col) {
+      if (summarySortCol === col) {
+        summarySortAsc = !summarySortAsc;
+      } else {
+        summarySortCol = col;
+        summarySortAsc = false;
+      }
+      renderSummaryTable();
+    }
+
+    // 5. RULE TOGGLE BUTTONS
+    function initRuleToggles() {
+      const container = document.getElementById('ruleToggleBar');
+      container.innerHTML = '';
+
+      DATA.rules.forEach(rule => {
+        const btn = document.createElement('button');
+        const isActive = selectedRules.has(rule);
+        const color = RULE_COLORS[rule] || "#71717a";
+
+        btn.className = `sc-btn sc-btn-outline font-mono`;
+        btn.style.fontSize = '0.72rem';
+        btn.style.padding = '0.3rem 0.65rem';
+
+        if (isActive) {
+          btn.style.borderColor = color;
+          btn.style.background = 'var(--bg-muted)';
+          btn.style.color = '#ffffff';
+        } else {
+          btn.style.opacity = '0.5';
+        }
+
+        btn.innerHTML = `<span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:${color}; margin-right:5px;"></span>${rule}`;
+        btn.onclick = () => {
+          if (selectedRules.has(rule)) {
+            selectedRules.delete(rule);
+          } else {
+            selectedRules.add(rule);
+          }
+          initRuleToggles();
+          renderTrajectoryPlot();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function setPreset(name) {
+      if (name === 'all') {
+        selectedRules = new Set(DATA.rules);
+      } else if (name === 'key') {
+        selectedRules = new Set(["every_4_weeks", "drift_2σ", "score_0.02", "never"]);
+      } else if (name === 'drift') {
+        selectedRules = new Set(["drift_2σ", "drift_3σ", "drift_4σ", "never"]);
+      } else if (name === 'score') {
+        selectedRules = new Set(["score_0.02", "score_0.03", "score_0.05", "never"]);
+      }
+      initRuleToggles();
+      renderTrajectoryPlot();
+    }
+
+    // 6. TAB SWITCHING (Robust explicit display toggle)
+    function setTab(tabId) {
+      currentTab = tabId;
+
+      // 1. Update tab buttons
+      document.querySelectorAll('.sc-tab-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById(`tabBtn-${tabId}`);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      // 2. Hide all panes explicitly
+      document.querySelectorAll('.tab-pane').forEach(p => {
+        p.classList.remove('active');
+        p.style.display = 'none';
+      });
+
+      // 3. Show active pane explicitly
+      const activePane = document.getElementById(`pane-${tabId}`);
+      if (activePane) {
+        activePane.classList.add('active');
+        activePane.style.display = 'block';
+      }
+
+      // 4. Render/resize charts for the newly active pane
+      if (tabId === 'overview') {
+        renderTradeoffPlot();
+        setTimeout(() => Plotly.Plots.resize('tradeoffPlot'), 20);
+      } else if (tabId === 'trajectories') {
+        renderTrajectoryPlot();
+        setTimeout(() => Plotly.Plots.resize('trajectoryPlot'), 20);
+      } else if (tabId === 'drift') {
+        renderDriftPlots();
+        setTimeout(() => {
+          Plotly.Plots.resize('oovPlot');
+          Plotly.Plots.resize('jsPlot');
+        }, 20);
+      } else if (tabId === 'data') {
+        filterDataRows();
+      }
+    }
+
+    // 7. DATA EXPLORER
+    function initDataExplorer() {
+      const ruleSelect = document.getElementById('rawRuleSelect');
+      DATA.rules.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r;
+        ruleSelect.appendChild(opt);
+      });
+      filterDataRows();
+    }
+
+    function filterDataRows() {
+      const search = document.getElementById('rawSearch').value.toLowerCase().trim();
+      const rule = document.getElementById('rawRuleSelect').value;
+      const seed = document.getElementById('rawSeedSelect').value;
+      const retrainOnly = document.getElementById('rawRetrainOnly').checked;
+
+      filteredRecords = DATA.raw_records.filter(r => {
+        if (rule !== 'ALL' && r.rule !== rule) return false;
+        if (seed !== 'ALL' && String(r.seed) !== seed) return false;
+        if (retrainOnly && !r.retrained) return false;
+        if (search && !r.week_id.toLowerCase().includes(search) && !r.rule.toLowerCase().includes(search)) return false;
+        return true;
+      });
+
+      rawPage = 1;
+      renderDataPage();
+    }
+
+    function renderDataPage() {
+      document.getElementById('dataRowCountLabel').textContent = `${filteredRecords.length} records matching`;
+
+      const maxPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
+      if (rawPage > maxPages) rawPage = maxPages;
+
+      document.getElementById('curPageNum').textContent = rawPage;
+      document.getElementById('totalPageNum').textContent = maxPages;
+      document.getElementById('btnPrevPage').disabled = rawPage <= 1;
+      document.getElementById('btnNextPage').disabled = rawPage >= maxPages;
+
+      const start = (rawPage - 1) * PAGE_SIZE;
+      const pageSlice = filteredRecords.slice(start, start + PAGE_SIZE);
+
+      const tbody = document.getElementById('rawTableBody');
+      tbody.innerHTML = '';
+
+      pageSlice.forEach(row => {
+        const tr = document.createElement('tr');
+        const color = RULE_COLORS[row.rule] || '#71717a';
+        tr.innerHTML = `
+          <td>${row.week_id}</td>
+          <td><span style="color:${color}; font-weight:600;">${row.rule}</span></td>
+          <td>${row.seed}</td>
+          <td style="font-weight:600; color:${row.macro_f1 < 0.42 ? '#fb7185' : '#34d399'};">${row.macro_f1.toFixed(4)}</td>
+          <td>${row.accuracy.toFixed(4)}</td>
+          <td>${row.oov_share.toFixed(4)}</td>
+          <td>${row.js_distance.toFixed(4)}</td>
+          <td>${row.retrained ? '<span class="sc-badge badge-emerald" style="font-size:0.68rem; padding:1px 5px;">YES</span>' : '<span style="color:var(--text-muted);">No</span>'}</td>
+          <td style="text-align:right;">${row.train_time_s.toFixed(2)}s</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function changePage(delta) {
+      const maxPages = Math.ceil(filteredRecords.length / PAGE_SIZE);
+      const target = rawPage + delta;
+      if (target >= 1 && target <= maxPages) {
+        rawPage = target;
+        renderDataPage();
+      }
+    }
+
+    // 8. EXPORTS
+    function exportSummaryCSV() {
+      let csv = "rule,avg_macro_f1,weeks_below_0.42_f1,avg_retrains,avg_train_time_s,needs_labels\n";
+      DATA.summary.forEach(r => {
+        csv += `${r.rule},"${r.avg_macro_f1}","${r["weeks_below_0.42_f1"]}","${r.avg_retrains}","${r.avg_train_time_s}",${r.needs_labels}\n`;
+      });
+      triggerDownload(csv, "summary.csv");
+    }
+
+    function exportFilteredCSV() {
+      let csv = "week_id,rule,seed,macro_f1,accuracy,oov_share,js_distance,retrained,train_time_s\n";
+      filteredRecords.forEach(r => {
+        csv += `${r.week_id},${r.rule},${r.seed},${r.macro_f1},${r.accuracy},${r.oov_share},${r.js_distance},${r.retrained},${r.train_time_s}\n`;
+      });
+      triggerDownload(csv, "filtered_results.csv");
+    }
+
+    function triggerDownload(content, filename) {
+      const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // 9. THEME
+    document.getElementById('themeToggleBtn').addEventListener('click', () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      if (isDark) {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+        localStorage.setItem('theme', 'light');
+      } else {
+        document.documentElement.classList.remove('light');
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      }
+      renderTradeoffPlot();
+      if (currentTab === 'trajectories') renderTrajectoryPlot();
+      if (currentTab === 'drift') renderDriftPlots();
+    });
+
+    // 10. INITIALIZATION
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+      renderSummaryTable();
+      initRuleToggles();
+      renderTradeoffPlot();
+      initDataExplorer();
+    });
+
+    window.addEventListener('resize', () => {
+      if (currentTab === 'overview') Plotly.Plots.resize('tradeoffPlot');
+      if (currentTab === 'trajectories') Plotly.Plots.resize('trajectoryPlot');
+      if (currentTab === 'drift') {
+        Plotly.Plots.resize('oovPlot');
+        Plotly.Plots.resize('jsPlot');
+      }
+    });
+  </script>
+</body>
+</html>

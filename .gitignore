@@ -1,0 +1,34 @@
+# ── Large / generated files ──
+data/pool.parquet
+data/sample_seed*.parquet
+mlruns/
+mlruns.db
+mlartifacts/
+
+# ── Virtual Environment ──
+.venv/
+venv/
+env/
+
+# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Output (keep results committed, but not large ones) ──
+# results/ is tracked — small CSVs and PNGs
+
